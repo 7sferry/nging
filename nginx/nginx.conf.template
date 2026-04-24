@@ -12,20 +12,15 @@ http {
     }
 
     upstream auth_service {
-        server auth-blue-1:8080 max_fails=1 fail_timeout=5s;
-
+{{AUTH_SERVERS}}
     }
 
     upstream user_service {
-        server user-green-1:8080 max_fails=1 fail_timeout=5s;
-        server user-green-2:8080 max_fails=1 fail_timeout=5s;
-        server user-green-3:8080 max_fails=1 fail_timeout=5s;
-
+{{USER_SERVERS}}
     }
 
     upstream accounting_service {
-        server accounting-blue-1:8080 max_fails=1 fail_timeout=5s;
-
+{{ACCOUNTING_SERVERS}}
     }
 
     server {

@@ -1,8 +1,19 @@
 server:
   port: 7382
+  shutdown: graceful
 spring:
   application:
     name: user-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
 services:
   accounting:
     url: http://localhost:7384

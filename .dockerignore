@@ -1,0 +1,10 @@
+**/target
+.git
+docs
+static
+nginx
+*.md
+deploy.sh
+docker-compose.yml
+init-db.sql
+logs

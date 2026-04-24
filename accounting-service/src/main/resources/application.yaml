@@ -1,5 +1,16 @@
 server:
   port: 7384
+  shutdown: graceful
 spring:
   application:
     name: accounting-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always

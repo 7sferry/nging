@@ -1,8 +1,11 @@
 server:
   port: 7381
+  shutdown: graceful
 spring:
   application:
     name: auth-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   datasource:
     url: jdbc:postgresql://localhost:5432/postgres
     username: postgres
@@ -16,10 +19,18 @@ spring:
       host: localhost
       port: 6379
       password: 12345
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
 
 auth:
   refresh-token:
-    rotate-after-seconds: 86400   # 1 day — after this, issue new refresh token
-    expire-after-seconds: 604800  # 7 days — after this, must re-login
+    rotate-after-seconds: 86400   # 1 day
+    expire-after-seconds: 604800  # 7 days
   access-token:
-    cache-ttl-seconds: 300        # 5 minutes — matches JWT expiration
+    cache-ttl-seconds: 300        # 5 minutes

@@ -2,31 +2,53 @@ services:
   nginx:
     image: nginx:alpine
     container_name: nging-gateway
-    network_mode: host
+    ports:
+      - "9090:9090"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./static:/usr/share/nginx/html:ro
+    networks:
+      - app
 
-#  postgres:
-#    image: postgres:alpine3.19
-#    container_name: postgres
-#    ports:
-#      - "5432:5432"
-#    environment:
-#      POSTGRES_DB: postgres
-#      POSTGRES_USER: postgres
-#      POSTGRES_PASSWORD: 12345
-#    volumes:
-#      - pgdata:/var/lib/postgresql/data
-#
-#  redis:
-#    image: redis:8.6.2-alpine3.23
-#    container_name: redis
-#    ports:
-#      - "6379:6379"
-#    command: redis-server --requirepass 12345
-#    volumes:
-#      - redisdata:/data
+  postgres:
+    image: postgres:17-alpine
+    container_name: nging-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nging-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass 12345
+    volumes:
+      - redisdata:/data
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "12345", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  app:
+    name: nging-app
 
 volumes:
   pgdata:
