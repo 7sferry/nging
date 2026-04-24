@@ -73,6 +73,164 @@ if [[ "$ACTION" == "stop" ]]; then
     exit 0
 fi
 
+# ─── Generate nginx config ───
+generate_nginx_conf() {
+    local active_color=$1   # color to use for the deployed service(s)
+    local target_svc=$2     # "all" or specific service name (e.g. "auth")
+    local output="$PROJECT_DIR/nginx/nginx.conf"
+
+    local auth_servers="" user_servers="" accounting_servers=""
+
+    # Collect running containers for each service
+    # For the deployed service: only include active_color
+    # For other services: include any color (they weren't redeployed)
+    # Always exclude -old containers being drained
+    for svc in auth user accounting; do
+        local servers=""
+        for container in $(docker ps --filter "network=$NETWORK" --filter "name=${svc}-" --format "{{.Names}}" | grep -v -- '-old$' | sort); do
+            if [[ -n "$active_color" ]]; then
+                if [[ "$target_svc" == "all" || "$target_svc" == "$svc" ]]; then
+                    if [[ ! "$container" =~ -${active_color}- ]]; then
+                        continue
+                    fi
+                fi
+            fi
+            servers+="        server ${container}:8080 max_fails=1 fail_timeout=5s;"$'\n'
+        done
+
+        case $svc in
+            auth)       auth_servers="$servers" ;;
+            user)       user_servers="$servers" ;;
+            accounting) accounting_servers="$servers" ;;
+        esac
+    done
+
+    cat > "$output" <<NGINX_EOF
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    map \$uri \$no_cache {
+        ~^/api/  "no-store";
+        default  "";
+    }
+
+    upstream auth_service {
+${auth_servers}    }
+
+    upstream user_service {
+${user_servers}    }
+
+    upstream accounting_service {
+${accounting_servers}    }
+
+    server {
+        listen 9090;
+
+        add_header Cache-Control \$no_cache always;
+
+        location = /_validate {
+            internal;
+            proxy_pass http://auth_service/auth/validate;
+            proxy_http_version 1.1;
+            proxy_method GET;
+            proxy_pass_request_body off;
+            proxy_set_header Content-Length "0";
+            proxy_set_header Host \$host;
+            proxy_set_header Connection "";
+            proxy_set_header Transfer-Encoding "";
+            proxy_set_header Authorization \$http_authorization;
+        }
+
+        location /api/auth/ {
+            proxy_pass http://auth_service/auth/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+
+        location /api/users/ {
+            auth_request /_validate;
+            auth_request_set \$auth_user \$upstream_http_x_auth_user;
+            auth_request_set \$auth_client_id \$upstream_http_x_auth_client_id;
+            auth_request_set \$auth_roles \$upstream_http_x_auth_roles;
+            auth_request_set \$auth_work_entities \$upstream_http_x_auth_work_entities;
+
+            proxy_pass http://user_service/users/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_set_header X-Auth-User \$auth_user;
+            proxy_set_header X-Auth-Client-Id \$auth_client_id;
+            proxy_set_header X-Auth-Roles \$auth_roles;
+            proxy_set_header X-Auth-Work-Entities \$auth_work_entities;
+            proxy_set_header Authorization \$http_authorization;
+        }
+
+        location /api/contacts/ {
+            auth_request /_validate;
+            auth_request_set \$auth_user \$upstream_http_x_auth_user;
+
+            proxy_pass http://user_service/contacts/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_set_header Authorization \$http_authorization;
+        }
+
+        location /api/accounts/ {
+            auth_request /_validate;
+            auth_request_set \$auth_user \$upstream_http_x_auth_user;
+            auth_request_set \$auth_client_id \$upstream_http_x_auth_client_id;
+            auth_request_set \$auth_roles \$upstream_http_x_auth_roles;
+            auth_request_set \$auth_work_entities \$upstream_http_x_auth_work_entities;
+
+            proxy_pass http://accounting_service/accounts/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_set_header X-Auth-User \$auth_user;
+            proxy_set_header X-Auth-Client-Id \$auth_client_id;
+            proxy_set_header X-Auth-Roles \$auth_roles;
+            proxy_set_header X-Auth-Work-Entities \$auth_work_entities;
+            proxy_set_header Authorization \$http_authorization;
+        }
+
+        location /api/ {
+            return 404 '{"error": "Not found"}';
+            add_header Content-Type application/json always;
+        }
+
+        location ~* \.html\$ {
+            root /usr/share/nginx/html;
+            add_header Cache-Control "no-cache" always;
+        }
+
+        location ~* \.(css|js)\$ {
+            root /usr/share/nginx/html;
+            add_header Cache-Control "public, max-age=3600, must-revalidate" always;
+        }
+
+        location / {
+            root /usr/share/nginx/html;
+            index login.html;
+            try_files \$uri \$uri/ /login.html;
+        }
+    }
+}
+NGINX_EOF
+
+    echo "  Generated nginx.conf with $active_color containers"
+}
+
 # ─── Rollback ───
 if [[ "$ACTION" == "rollback" ]]; then
     ROLLBACK_SVCS=("${SERVICES[@]}")
@@ -118,27 +276,7 @@ if [[ "$ACTION" == "rollback" ]]; then
 
     # Regenerate nginx config from remaining running containers
     echo "=== Updating nginx ==="
-    template="$PROJECT_DIR/nginx/nginx.conf.template"
-    output="$PROJECT_DIR/nginx/nginx.conf"
-    auth_servers="" user_servers="" accounting_servers=""
-
-    for svc in auth user accounting; do
-        servers=""
-        for container in $(docker ps --filter "network=$NETWORK" --filter "name=${svc}-" --format "{{.Names}}" | grep -v -- '-old$' | sort); do
-            servers+="        server ${container}:8080 max_fails=1 fail_timeout=5s;\n"
-        done
-        case $svc in
-            auth)       auth_servers="$servers" ;;
-            user)       user_servers="$servers" ;;
-            accounting) accounting_servers="$servers" ;;
-        esac
-    done
-
-    sed -e "s|{{AUTH_SERVERS}}|${auth_servers}|" \
-        -e "s|{{USER_SERVERS}}|${user_servers}|" \
-        -e "s|{{ACCOUNTING_SERVERS}}|${accounting_servers}|" \
-        "$template" > "$output"
-
+    generate_nginx_conf "" "all"
     docker exec nging-gateway nginx -t && docker exec nging-gateway nginx -s reload
     echo "  Nginx reloaded"
     echo ""
@@ -155,6 +293,12 @@ if [[ "$ACTION" != "blue" && "$ACTION" != "green" ]]; then
 fi
 
 OTHER=$([[ "$ACTION" == "blue" ]] && echo "green" || echo "blue")
+
+# ─── Ensure nginx.conf exists ───
+if [[ ! -f "$PROJECT_DIR/nginx/nginx.conf" ]]; then
+    echo "=== Creating nginx.conf from template ==="
+    cp "$PROJECT_DIR/nginx/nginx.conf.template" "$PROJECT_DIR/nginx/nginx.conf"
+fi
 
 # ─── Ensure infra is running ───
 echo "=== Ensuring infrastructure ==="
@@ -290,49 +434,6 @@ if [[ "$HEALTH_OK" != true ]]; then
     exit 1
 fi
 echo ""
-
-# ─── Generate nginx config ───
-generate_nginx_conf() {
-    local active_color=$1   # color to use for the deployed service(s)
-    local target_svc=$2     # "all" or specific service name (e.g. "auth")
-    local template="$PROJECT_DIR/nginx/nginx.conf.template"
-    local output="$PROJECT_DIR/nginx/nginx.conf"
-
-    local auth_servers="" user_servers="" accounting_servers=""
-
-    # Collect running containers for each service
-    # For the deployed service: only include active_color
-    # For other services: include any color (they weren't redeployed)
-    # Always exclude -old containers being drained
-    for svc in auth user accounting; do
-        local servers=""
-        for container in $(docker ps --filter "network=$NETWORK" --filter "name=${svc}-" --format "{{.Names}}" | grep -v -- '-old$' | sort); do
-            if [[ -n "$active_color" ]]; then
-                if [[ "$target_svc" == "all" || "$target_svc" == "$svc" ]]; then
-                    # Deployed service: only include active color
-                    if [[ ! "$container" =~ -${active_color}- ]]; then
-                        continue
-                    fi
-                fi
-                # Non-deployed services: include any color
-            fi
-            servers+="        server ${container}:8080 max_fails=1 fail_timeout=5s;\n"
-        done
-
-        case $svc in
-            auth)       auth_servers="$servers" ;;
-            user)       user_servers="$servers" ;;
-            accounting) accounting_servers="$servers" ;;
-        esac
-    done
-
-    sed -e "s|{{AUTH_SERVERS}}|${auth_servers}|" \
-        -e "s|{{USER_SERVERS}}|${user_servers}|" \
-        -e "s|{{ACCOUNTING_SERVERS}}|${accounting_servers}|" \
-        "$template" > "$output"
-
-    echo "  Generated nginx.conf with $active_color containers"
-}
 
 echo "=== Updating nginx ==="
 NGINX_TARGET=$([[ "$TARGET_SERVICE" == "all" ]] && echo "all" || echo "${TARGET_SERVICE%-service}")
