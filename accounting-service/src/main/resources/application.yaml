@@ -1,0 +1,5 @@
+server:
+  port: 7384
+spring:
+  application:
+    name: accounting-service

@@ -1,0 +1,8 @@
+server:
+  port: 7382
+spring:
+  application:
+    name: user-service
+services:
+  accounting:
+    url: http://localhost:7384

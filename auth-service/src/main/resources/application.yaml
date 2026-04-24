@@ -1,0 +1,25 @@
+server:
+  port: 7381
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: 12345
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 12345
+
+auth:
+  refresh-token:
+    rotate-after-seconds: 86400   # 1 day — after this, issue new refresh token
+    expire-after-seconds: 604800  # 7 days — after this, must re-login
+  access-token:
+    cache-ttl-seconds: 300        # 5 minutes — matches JWT expiration

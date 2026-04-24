@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="header">
+    <h1>User Dashboard</h1>
+    <div>
+        <span class="status" id="authStatus"></span>
+        <button class="logout" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<div id="userDetail" class="user-detail">
+    <button class="back-btn" onclick="showList()">Back to list</button>
+    <h3>User Detail</h3>
+    <p><strong>ID:</strong> <span id="detailId"></span></p>
+    <p><strong>Name:</strong> <span id="detailName"></span></p>
+    <p><strong>Email:</strong> <span id="detailEmail"></span></p>
+    <p><strong>Role:</strong> <span id="detailRole"></span></p>
+    <p><strong>Account Balance:</strong> $<span id="detailBalance"></span></p>
+    <p><strong>Phone:</strong> <span id="detailPhone"></span></p>
+    <p><strong>Address:</strong> <span id="detailAddress"></span></p>
+    <p><strong>Emergency Contact:</strong> <span id="detailEmergency"></span></p>
+</div>
+
+<div id="userList" class="card">
+    <h3>All Users</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Balance</th>
+        </tr>
+        </thead>
+        <tbody id="usersTable">
+        </tbody>
+    </table>
+</div>
+
+<script src="/js/auth.js"></script>
+<script src="/js/dashboard.js"></script>
+</body>
+</html>
