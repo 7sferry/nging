@@ -160,6 +160,22 @@ ${accounting_servers}    }
             proxy_set_header Authorization \$http_authorization;
         }
 
+        # Health check endpoints (no auth required)
+        location = /api/health/auth {
+            proxy_pass http://auth_service/actuator/health;
+            proxy_set_header Host \$host;
+        }
+
+        location = /api/health/user {
+            proxy_pass http://user_service/actuator/health;
+            proxy_set_header Host \$host;
+        }
+
+        location = /api/health/accounting {
+            proxy_pass http://accounting_service/actuator/health;
+            proxy_set_header Host \$host;
+        }
+
         location /api/auth/ {
             limit_req zone=api_auth burst=10 nodelay;
 
