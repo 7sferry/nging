@@ -9,6 +9,7 @@ services:
       - ./static:/usr/share/nginx/html:ro
     networks:
       - app
+    restart: on-failure:5
 
   postgres:
     image: postgres:17-alpine
