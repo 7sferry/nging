@@ -6,8 +6,22 @@ http {
     include       mime.types;
     default_type  application/octet-stream;
 
+    # Rate limiting zones (per client IP)
+    limit_req_zone $binary_remote_addr zone=api_general:10m rate=20r/s;
+    limit_req_zone $binary_remote_addr zone=api_auth:10m rate=5r/s;
+
+    # Return JSON on rate limit (429)
+    limit_req_status 429;
+
     server {
         listen 9090;
+
+        # Custom 429 error response
+        error_page 429 = @rate_limited;
+        location @rate_limited {
+            default_type application/json;
+            return 429 '{"error": "Too many requests. Please try again later."}';
+        }
 
         # API routes return 503 until services are deployed via deploy.sh
         location /api/ {

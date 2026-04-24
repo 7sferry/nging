@@ -114,6 +114,13 @@ http {
     include       mime.types;
     default_type  application/octet-stream;
 
+    # Rate limiting zones (per client IP)
+    limit_req_zone \$binary_remote_addr zone=api_general:10m rate=20r/s;
+    limit_req_zone \$binary_remote_addr zone=api_auth:10m rate=5r/s;
+
+    # Return JSON on rate limit (429)
+    limit_req_status 429;
+
     map \$uri \$no_cache {
         ~^/api/  "no-store";
         default  "";
@@ -133,6 +140,13 @@ ${accounting_servers}    }
 
         add_header Cache-Control \$no_cache always;
 
+        # Custom 429 error response
+        error_page 429 = @rate_limited;
+        location @rate_limited {
+            default_type application/json;
+            return 429 '{"error": "Too many requests. Please try again later."}';
+        }
+
         location = /_validate {
             internal;
             proxy_pass http://auth_service/auth/validate;
@@ -147,6 +161,8 @@ ${accounting_servers}    }
         }
 
         location /api/auth/ {
+            limit_req zone=api_auth burst=10 nodelay;
+
             proxy_pass http://auth_service/auth/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
@@ -155,6 +171,8 @@ ${accounting_servers}    }
         }
 
         location /api/users/ {
+            limit_req zone=api_general burst=40 nodelay;
+
             auth_request /_validate;
             auth_request_set \$auth_user \$upstream_http_x_auth_user;
             auth_request_set \$auth_client_id \$upstream_http_x_auth_client_id;
@@ -174,6 +192,8 @@ ${accounting_servers}    }
         }
 
         location /api/contacts/ {
+            limit_req zone=api_general burst=40 nodelay;
+
             auth_request /_validate;
             auth_request_set \$auth_user \$upstream_http_x_auth_user;
 
@@ -186,6 +206,8 @@ ${accounting_servers}    }
         }
 
         location /api/accounts/ {
+            limit_req zone=api_general burst=40 nodelay;
+
             auth_request /_validate;
             auth_request_set \$auth_user \$upstream_http_x_auth_user;
             auth_request_set \$auth_client_id \$upstream_http_x_auth_client_id;

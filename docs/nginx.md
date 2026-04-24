@@ -149,6 +149,105 @@ Nginx evaluates locations in this priority:
 4. `/api/accounts/` — prefix match
 5. `/` — catch-all for static files, lowest priority
 
+## Rate Limiting
+
+Rate limiting is applied at the nginx level to protect backend services from excessive requests.
+
+### Configuration
+
+Two rate limit zones are defined in the `http` block:
+
+```nginx
+limit_req_zone $binary_remote_addr zone=api_auth:10m rate=5r/s;
+limit_req_zone $binary_remote_addr zone=api_general:10m rate=20r/s;
+limit_req_status 429;
+```
+
+- `$binary_remote_addr` — tracks each client by IP address (4 bytes per IPv4, saves memory vs string form).
+- `zone=api_auth:10m` — allocates 10MB shared memory for tracking state. 10MB holds ~160,000 unique IPs.
+- `rate=5r/s` — base rate of 5 requests per second (internally: 1 request per 200ms).
+- `limit_req_status 429` — return HTTP 429 (Too Many Requests) instead of the default 503.
+
+### Zones and where they apply
+
+| Zone | Rate | Burst | Applied to |
+|------|------|-------|------------|
+| `api_auth` | 5r/s | 10 | `/api/auth/` (login, register, token) |
+| `api_general` | 20r/s | 40 | `/api/users/`, `/api/contacts/`, `/api/accounts/` |
+
+Auth endpoints have a stricter limit because they are the primary target for brute force attacks. 5 requests per second is sufficient for normal login usage but makes automated password guessing impractical.
+
+The `/_validate` internal subrequest is **not** rate limited — it is triggered by nginx itself, not directly by clients.
+
+### How rate + burst works
+
+Think of it as a parking lot:
+
+- **rate** = number of spots that free up per second (the refill speed)
+- **burst** = number of overflow spots (extra capacity for short spikes)
+
+Example with `rate=5r/s burst=3 nodelay`:
+
+```
+Capacity at any moment: 4 (1 base + 3 burst)
+
+Client sends 6 requests at t=0:
+  Request 1 → processed (base slot)
+  Request 2 → processed (burst slot 1)
+  Request 3 → processed (burst slot 2)
+  Request 4 → processed (burst slot 3)
+  Request 5 → 429 rejected (no slots left)
+  Request 6 → 429 rejected
+
+Slots refill at base rate (1 per 200ms):
+  t=200ms  → 1 slot available
+  t=400ms  → 2 slots available
+  t=600ms  → 3 slots available
+  t=800ms  → all 4 slots available
+```
+
+The `nodelay` flag means burst requests are processed immediately rather than queued. Without it, request 2 would wait 200ms, request 3 would wait 400ms, etc.
+
+### 429 error response
+
+A custom error page returns a JSON body:
+
+```nginx
+error_page 429 = @rate_limited;
+location @rate_limited {
+    default_type application/json;
+    return 429 '{"error": "Too many requests. Please try again later."}';
+}
+```
+
+Without the custom error page, nginx would return an HTML response which is not useful for API clients.
+
+### Current limits summary
+
+| Endpoint | Max instant burst | Sustained rate | Per |
+|----------|-------------------|----------------|-----|
+| `/api/auth/*` | 11 requests | 5 req/s | IP |
+| `/api/users/*` | 41 requests | 20 req/s | IP |
+| `/api/contacts/*` | 41 requests | 20 req/s | IP |
+| `/api/accounts/*` | 41 requests | 20 req/s | IP |
+| Static files (`/`) | No limit | — | — |
+
+Max instant burst = 1 (base) + burst value.
+
+### Tuning
+
+To adjust limits, modify the values in `deploy.sh` inside the `generate_nginx_conf()` function and in `nginx/nginx.conf.template`:
+
+- **Lower `rate`** → stricter sustained limit, slower slot refill
+- **Higher `burst`** → more tolerance for traffic spikes
+- **Remove `nodelay`** → burst requests are queued instead of instant (adds latency but smooths traffic)
+
+After changing, redeploy to regenerate nginx.conf:
+
+```bash
+./deploy.sh blue   # or whatever color is active
+```
+
 ## Reloading Configuration
 
 Since `nginx.conf` is bind-mounted via a Docker volume, file changes on the host are visible inside the container immediately. However, **nginx does not watch the file** — it only reads the config on startup or when explicitly told to reload.
