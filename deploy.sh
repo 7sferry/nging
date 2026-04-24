@@ -360,7 +360,8 @@ start_containers() {
                   -e SPRING_DATASOURCE_USERNAME=postgres \
                   -e SPRING_DATASOURCE_PASSWORD=12345 \
                   -e SPRING_DATA_REDIS_HOST=nging-redis \
-                  -e SPRING_DATA_REDIS_PASSWORD=12345"
+                  -e SPRING_DATA_REDIS_PASSWORD=12345 \
+                  -e JWT_SECRET=${JWT_SECRET:-my-super-secret-key-for-jwt-demo-at-least-32-bytes}"
     elif [[ "$svc" == "user" ]]; then
         env_args="-e SERVICES_ACCOUNTING_URL=http://accounting:8080"
     fi

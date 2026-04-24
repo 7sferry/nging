@@ -28,6 +28,9 @@ management:
     health:
       show-details: always
 
+jwt:
+  secret: ${JWT_SECRET:my-super-secret-key-for-jwt-demo-at-least-32-bytes}
+
 auth:
   refresh-token:
     rotate-after-seconds: 86400   # 1 day
