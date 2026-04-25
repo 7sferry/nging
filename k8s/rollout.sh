@@ -88,10 +88,23 @@ fi
 NEW_DEPLOY="$SERVICE-$NEW_SLOT"
 OLD_DEPLOY="$SERVICE-$CURRENT_SLOT"
 
-# Read replicas from the current active deployment (or default to 1)
-REPLICAS=$(kubectl get deployment "$SERVICE" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
+# Read replicas from whichever deployment is currently serving traffic
+ACTIVE_DEPLOY="$SERVICE-$CURRENT_SLOT"
+REPLICAS=$(kubectl get deployment "$ACTIVE_DEPLOY" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
+# If the slot deployment was already scaled to 0 (from a previous rollout), check the base deployment
+if [[ "$REPLICAS" -lt 1 ]]; then
+  REPLICAS=$(kubectl get deployment "$SERVICE" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
+fi
+if [[ "$REPLICAS" -lt 1 ]]; then
+  # Count the actual running pods as last resort
+  REPLICAS=$(kubectl get pods -n "$NAMESPACE" -l "app=$SERVICE" --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l)
+fi
+if [[ "$REPLICAS" -lt 1 ]]; then
+  REPLICAS=1
+fi
+echo "==> Replicas: $REPLICAS"
 
-# Export the current deployment, modify it for the new slot
+# Export the base deployment, modify it for the new slot
 echo "==> Creating deployment $NEW_DEPLOY..."
 kubectl get deployment "$SERVICE" -n "$NAMESPACE" -o json | \
   jq --arg name "$NEW_DEPLOY" \
@@ -130,4 +143,4 @@ fi
 echo ""
 echo "==> Blue-green rollout complete!"
 echo "    Active slot: $NEW_SLOT"
-kubectl get pods -n "$NAMESPACE" -l "app=$SERVICE"
+kubectl get pods -n "$NAMESPACE" -l "app=$SERVICE,slot=$NEW_SLOT"

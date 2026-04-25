@@ -101,3 +101,11 @@ minikube kubectl -- delete namespace nging
 ./k8s/deploy.sh
 
 After that, each ./k8s/rollout.sh call will alternate between blue and green.                                                                                                     
+
+# Scale the active slot deployment directly
+
+To check which slot is active:
+
+minikube kubectl -- get svc user-service -n nging -o jsonpath='{.spec.selector.slot}'
+
+minikube kubectl -- scale deployment/user-service-green -n nging --replicas=3
