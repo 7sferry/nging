@@ -80,10 +80,8 @@ async function main() {
     batches.push(batch);
   }
 
-  const allResults = [];
   for (const batch of batches) {
-    const batchResults = await runBatch(batch);
-    allResults.push(...batchResults);
+    await runBatch(batch);
   }
 
   const burstDuration = Date.now() - burstStart;
