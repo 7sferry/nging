@@ -14,10 +14,12 @@ spec:
   selector:
     matchLabels:
       app: user-service
+      slot: blue
   template:
     metadata:
       labels:
         app: user-service
+        slot: blue
     spec:
       terminationGracePeriodSeconds: 30
       containers:
@@ -59,6 +61,7 @@ metadata:
 spec:
   selector:
     app: user-service
+    slot: blue
   ports:
     - port: 8080
       targetPort: 8080

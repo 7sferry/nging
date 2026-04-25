@@ -14,10 +14,12 @@ spec:
   selector:
     matchLabels:
       app: accounting-service
+      slot: blue
   template:
     metadata:
       labels:
         app: accounting-service
+        slot: blue
     spec:
       terminationGracePeriodSeconds: 30
       containers:
@@ -56,6 +58,7 @@ metadata:
 spec:
   selector:
     app: accounting-service
+    slot: blue
   ports:
     - port: 8080
       targetPort: 8080

@@ -77,3 +77,27 @@ minikube kubectl -- rollout restart deployment/nginx -n nging
 # turn off all deployments
 minikube kubectl -- scale deployment --all -n nging --replicas=0
 minikube kubectl -- scale statefulset --all -n nging --replicas=0                                                                                                                 
+
+# Blue-green deployment
+The rollout script now does this:
+
+1. Detects the current active slot (blue or green) from the Service selector
+2. Builds the new image and creates a new Deployment for the inactive slot
+3. Waits until all new pods pass readiness probes
+4. Patches the Service selector in one atomic operation — traffic switches instantly, all at once
+5. Scales down the old slot
+
+Traffic never hits a mix of versions.
+
+Usage (same as before)
+
+./k8s/rollout.sh user-service
+
+First deploy
+
+You need to redeploy first since the manifests now have slot: blue labels:
+
+minikube kubectl -- delete namespace nging                                                                                                                                        
+./k8s/deploy.sh
+
+After that, each ./k8s/rollout.sh call will alternate between blue and green.                                                                                                     
