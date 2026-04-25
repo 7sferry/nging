@@ -23,7 +23,7 @@ public class UserController {
 
     private static final List<Map<String, Object>> USERS = List.of(
             Map.of("id", 1, "name", "John Doex12", "email", "john@example.com", "role", "admin"),
-            Map.of("id", 2, "name", "Jane Smith blue", "email", "jane@example.com", "role", "user"),
+            Map.of("id", 2, "name", "Jane Smith green", "email", "jane@example.com", "role", "user"),
             Map.of("id", 3, "name", "Bob Wilson", "email", "bob@example.com", "role", "user")
     );
 
