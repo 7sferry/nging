@@ -67,3 +67,13 @@ minikube kubectl -- scale deployment/user-service -n nging --replicas=3
 
 To verify:                                                                                                                                                                        
 minikube kubectl -- get pods -n nging -l app=user-service
+
+# for changes to take effect
+minikube kubectl -- apply -f k8s/nginx.yaml
+minikube kubectl -- rollout restart deployment/nginx -n nging
+
+
+
+# turn off all deployments
+minikube kubectl -- scale deployment --all -n nging --replicas=0
+minikube kubectl -- scale statefulset --all -n nging --replicas=0                                                                                                                 

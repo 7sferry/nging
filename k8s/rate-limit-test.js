@@ -21,7 +21,7 @@ const url = process.argv[2] || "http://192.168.49.2:30090/api/users/";
 const totalRequests = parseInt(process.argv[3] || "100", 10);
 const concurrency = parseInt(process.argv[4] || "50", 10);
 
-const token = process.env.AUTH_TOKEN || "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhZG1pbiIsImNsaWVudElkIjoiQ0xJRU5ULTAwMSIsInJvbGVzIjpbIkFETUlOIiwiTUFOQUdFUiJdLCJ3b3JrRW50aXRpZXMiOlsiRU5USVRZLUEiLCJFTlRJVFktQiIsIkVOVElUWS1DIl0sImlhdCI6MTc3NzA4MzQ5MywiZXhwIjoxNzc3MDgzNzkzfQ.I4XCJhHcyxgwA1_Aqd6kGc1m8DD5FvODrGnlntWBnGa4CBfOAq2BxkABYR9wGaK4";
+const token = process.env.AUTH_TOKEN || "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhZG1pbiIsImNsaWVudElkIjoiQ0xJRU5ULTAwMSIsInJvbGVzIjpbIkFETUlOIiwiTUFOQUdFUiJdLCJ3b3JrRW50aXRpZXMiOlsiRU5USVRZLUEiLCJFTlRJVFktQiIsIkVOVElUWS1DIl0sImlhdCI6MTc3NzA4NDMyNCwiZXhwIjoxNzc3MDg0NjI0fQ.nVDkEoikxXQ9wOmAY7kmALlRIWGvFyVvHp26QOC5z7iSaz0nfYDpLgR9HTiMhYEF";
 
 const results = {};
 let completed = 0;

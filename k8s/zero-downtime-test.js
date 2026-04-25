@@ -15,11 +15,11 @@
  */
 
 const url = process.argv[2] || "http://192.168.49.2:30090/api/users/";
-const durationSec = parseInt(process.argv[3] || "600", 10);
+const durationSec = parseInt(process.argv[3] || "240", 10);
 const intervalMs = parseInt(process.argv[4] || "200", 10);
 
 // You'll need a valid JWT — paste one here or pass via AUTH_TOKEN env var
-const token = process.env.AUTH_TOKEN || "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhZG1pbiIsImNsaWVudElkIjoiQ0xJRU5ULTAwMSIsInJvbGVzIjpbIkFETUlOIiwiTUFOQUdFUiJdLCJ3b3JrRW50aXRpZXMiOlsiRU5USVRZLUEiLCJFTlRJVFktQiIsIkVOVElUWS1DIl0sImlhdCI6MTc3NzA4MzgzNywiZXhwIjoxNzc3MDg0MTM3fQ.3lcUrQzaSJT4pLSE8HN8VxI7Cx0VdwL-8c0VvShgc-ya3mkSJSg4DRd1bpP5-iS-";
+const token = process.env.AUTH_TOKEN || "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhZG1pbiIsImNsaWVudElkIjoiQ0xJRU5ULTAwMSIsInJvbGVzIjpbIkFETUlOIiwiTUFOQUdFUiJdLCJ3b3JrRW50aXRpZXMiOlsiRU5USVRZLUEiLCJFTlRJVFktQiIsIkVOVElUWS1DIl0sImlhdCI6MTc3NzA4NTY4NywiZXhwIjoxNzc3MDg1OTg3fQ.JG3Z1DwogUlEF5cwsxrSaVhCUU-gl_EIjsNC38opiZFm0XxZvL2jcW1f8I7_zB-o";
 
 let total = 0;
 let success = 0;
